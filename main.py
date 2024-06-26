@@ -3,297 +3,57 @@ PEDIDITO SOFTWARE
 
 Author: PolitropicMX
 """
+### LIBRERIAS
+
 import pandas as pd
 import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 from cronometro import CronometroApp
-import openpyxl
 from threading import Thread
 import time
+from agregar_pedido_win import Agregar_pedido
+from pendientes_win import Pendientes_class
+from analisis_win import Analisis_class
+from openpyxl import load_workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl import Workbook
+import openpyxl
 
-class Cronometro(Thread):
-    def __init__(self, etiqueta, intervalo=1):
-        super().__init__()
-        self.etiqueta = etiqueta
-        self.intervalo = intervalo
-        self.terminar = False
 
-    def run(self):
-        segundos = 0
-        while not self.terminar:
-            time.sleep(self.intervalo)
-            segundos += 1
-            self.actualizar_etiqueta(segundos)
+#### FUNCIONES DEL PROGRAMA Y OTROS ARCHIVOS
 
-    def actualizar_etiqueta(self, segundos):
-        tiempo_formato = "{:02}:{:02}".format(segundos // 60, segundos % 60)
-        self.etiqueta.config(text=tiempo_formato)
+#       ###     #          #
+#      #   #   #   #   #    #
+#     #       #     # #      #
+#   #######   #      #       #
+#     #       #     # #      #
+#     #       #    #   #     #
+#     #        #  #     #   #
+#     #         #          #
 
-    def detener(self):
-        self.terminar = True
 
+## El CRONOMETRO CUANDO UNA ORDEN SE INICIA
 def iniciar_cronometro(etiqueta, cronometros_activos):
     print("Se inicializo el cronometro")
-    cronometro = Cronometro(etiqueta)
+    cronometro = CronometroApp(etiqueta)
     cronometro.start()
     cronometros_activos.append(cronometro)
 
 def detener_todos_cronometros(cronometros_activos):
     for cronometro in cronometros_activos:
         cronometro.detener()
-class Agregar_pedido:
-    def __init__(self,root,tree,func_rtrn,pedidos):
-        self.pedidos = pedidos
-        self.return_func = func_rtrn## Funcion de retorno a la ventana principal o ventana padre
-        self.tree = tree# el treeview de la ventana principal o ventana padre
-        ## CODIGO PARA ESTRAER FECHAY HORA
-        ahora = datetime.now()
-        self.fecha_y_hora = ahora.strftime("%Y-%m-%d %H:%M:%S")
-
-        ## TODOS LOS WIDGETS A USAR ------------------------------------------------------------------------------------------------------------------------------------
-        ## VENTANA
-        self.root = tk.Toplevel(root,bg="#046546")# 0
-        ## FRAME
-        self.check_frame = ttk.LabelFrame(self.root, text="Detalles del Pedido", padding=(20, 10))
-        ## TITULO: HORA
-        self.hora_label = tk.Label(self.root,text=self.fecha_y_hora)
-        ## FRAME: DIRECCIÓN DE ENTREGA
-        self.direc_cliente_frame = ttk.LabelFrame(self.check_frame, text="Dirección de Entrega", padding=(20, 10))
-        ## ENTRY: IRECCIÓN DE ENTREGA
-        self.direc_cliente_entry = ttk.Entry(self.direc_cliente_frame)
-        self.direc_cliente_entry.insert(0, "Ej. Purisima 55")
-        self.direc_cliente_entry.bind("<Button-1>", lambda event: self.borrar_texto(self.direc_cliente_entry))# Asociar la función borrar_texto al evento clic
-        ## NOMBRE DEL CLIENTE
-        self.nombre_cliente_frame = ttk.LabelFrame(self.check_frame, text="Nombre Cliente", padding=(20, 10))
-        self.nombre_cliente_entry = ttk.Entry(self.nombre_cliente_frame)
-        self.nombre_cliente_entry.insert(0, "Ej. Tierno")
-        self.nombre_cliente_entry.bind("<Button-1>", lambda event: self.borrar_texto(nombre_cliente_entry))# Asociar la función borrar_texto al evento clic
-        ## NUMERO DEL CLIENTE
-        self.num_cliente_frame = ttk.LabelFrame(self.check_frame, text="Numero celular", padding=(20, 10))
-        self.num_cliente_entry = ttk.Entry(self.num_cliente_frame)
-        self.num_cliente_entry.insert(0, "Ej. 5510293483")
-        self.num_cliente_entry.bind("<Button-1>", lambda event: self.borrar_texto(num_cliente_entry))# Asociar la función borrar_texto al evento clic
-        ## TARIFA
-        self.tarifa_frame = ttk.LabelFrame(self.check_frame, text="Tarifa $MXN", padding=(20, 10))
-        self.tarifa_entry = ttk.Entry(self.tarifa_frame)
-        self.tarifa_entry.insert(0, "Ej. 10")
-        self.tarifa_entry.bind("<Button-1>", lambda event: self.borrar_texto(tarifa_entry))# Asociar la función borrar_texto al evento clic
-        ## Orden
-        # Crear un widget Text
-        self.orden_text_frame = ttk.LabelFrame(self.root, text="Productos")
-        self.orden_text = tk.Text(self.orden_text_frame, height=10, width=40)
-        # Create a Frame for the Radiobuttons
-        self.radio_frame = ttk.LabelFrame(self.check_frame, text="Lista de articulos", padding=(20, 10))
-        # Radiobuttons
-        self.metodos_de_pago = ["Efectivo","Transferencia"]
-        self.var_metodos_de_pago = tk.StringVar(value='') 
-        self.radio_metodos_de_pago = [tk.Radiobutton(self.radio_frame, text=metodo, variable=self.var_metodos_de_pago, value=metodo) for i,metodo in enumerate(self.metodos_de_pago)]
-        # BOTONES
-        self.widgets_frame = ttk.Frame(self.check_frame)
-        self.botones = [("Guardar",self.guardar_f),("Cancelar",self.cancelar_f)]
-        self.botones_button = [ttk.Button(self.widgets_frame, text=i[0],command=i[1] ) for i in self.botones]
-##        for i,btn in enumerate(self.botones_button):
-##            
-    def guardar_f(self):
-        orden = str(self.orden_text.get("1.0", "end-1c"))
-        print(orden)
-        dicc_orden = self.procesar_lista_compras(orden)
-        print(dicc_orden)
-        # "N° de Pedido","Fecha","Nombre del cliente","N° de Contacto","Recoleccion","Entrega","Producto","Paga con…","Costo del pedido","Tarifa","Cobro total","Dinero entregado a repartidor para compra","$ entregado al repartidor para cambio","$ total dado al repartidor","$ total recibido por el repartidor"]  
-
-        direccion = self.direc_cliente_entry.get()
-        nombre = self.nombre_cliente_entry.get()
-        numero = self.num_cliente_entry.get()
-        orden = self.orden_text.get("1.0", "end-1c")
-        tarifa = self.tarifa_entry.get()
-        list_cli = [self.pedidos,self.fecha_y_hora,nombre,numero,"No especificado",direccion,orden,"No especificado","No especificado",tarifa,"No especificado","No especificado","No especificado","No especificado","No especificado"]
-        dicc_cli = {"dict":["No especificado",str(self.fecha_y_hora),nombre,numero,"No especificado",direccion,orden,"No especificado","No especificado",tarifa,"No especificado","No especificado","No especificado","No especificado","No especificado"]}
-        self.return_func(self.tree,list_cli)
-        self.root.destroy()
-    def cancelar_f(self):
-        self.root.destroy()      
-    def procesar_lista_compras(self,cadena_lista):
-        if any(char.isdigit() for char in cadena_lista):
-            # La cadena contiene al menos un número
-            print("La cadena contiene números. Realizar alguna acción aquí.")
-            print(f"cadena : '{cadena_lista}'")
-            lista_items = cadena_lista.split(', ')
-            resultado = {}
-
-            for item in lista_items:
-                partes = item.split(' ')
-                if len(partes) >= 2:
-                    cantidad = int(partes[0])
-                    producto = ' '.join(partes[1:])
-                    resultado[producto] = cantidad
-            return resultado
-        else:
-            # La cadena no contiene números, no hacer nada
-            
-            pass
         
-    def draw(self):
-        ## TODO LO QUE DIBUJA A LOS WIDGETS -------------------------------------------------------------------------------------------------------------------------------
-
-        ## MAPA JERARQUICO DE WIDGETS
-        ## root
-        ##     fecha_y_hora
-        ##     productos
-        ##         orden: text
-        ##     detalles del pedido/checkframe
-        ##         direccion_de_entrega:entry
-        ##         nombre:entry
-        ##         numero:entry
-        ##         metodo de pago: Radio_buttons
-        self.check_frame.grid(row=2, column=0, padx=(3), pady=(3), sticky="nsew")
-        self.hora_label.grid(row=0, column=0, padx=(3), pady=(3), sticky="nsew")
-
-        self.direc_cliente_frame.grid(row=0, column=0, sticky="nsew")
-        self.direc_cliente_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.nombre_cliente_frame.grid(row=1, column=0, sticky="nsew")
-        self.nombre_cliente_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.num_cliente_frame.grid(row=1, column=1, sticky="nsew")
-        self.num_cliente_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.tarifa_frame.grid(row=0, column=1, sticky="nsew")
-        self.tarifa_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-        
-        self.orden_text_frame.grid(row=1, column=0, sticky="nsew")
-        self.orden_text.pack(pady=10)
-
-        self.radio_frame.grid(row=2, column=0, padx=(20, 10), pady=10, sticky="nsew")
-
-        for i,radio in enumerate(self.radio_metodos_de_pago):
-##            radio.state(["alternate"])
-            
-            radio.grid(row=i, column=0, sticky="nsew")
-
-        for i,btn in enumerate(self.botones_button):
-            btn.grid(row=0, column=i, sticky="nsew")
-        self.widgets_frame.grid(row=3, column=0, sticky="nsew")
-
-    def get_data(self,func):
-        
-        data = [self.fecha_y_hora,direccion, nombre, numero, orden]
-        func(data)
-    def borrar_texto(self,entry):
-        # Borra el texto dentro del Entry al recibir un clic
-        entry.delete(0, tk.END)
-
-class Pendientes_class:
-    def __init__(self,root):
-
-        #Momento de la creacion de este objeto
-        ahora = datetime.now()
-        self.fecha_y_hora = ahora.strftime("%Y-%m-%d %H:%M:%S")
-
-        ## TODOS LOS WIDGETS A USAR ------------------------------------------------------------------------------------------------------------------------------------
-        # Create a Frame for the Checkbuttons
-        self.root = tk.Toplevel(root,bg="#046546")# 0
-        self.check_frame = ttk.LabelFrame(self.root, text="Detalles del Pedido", padding=(20, 10))
-        ## Hora y fecha
-        self.hora_label = tk.Label(self.root,text=self.fecha_y_hora)
-        ## DIRECCIÓN DE ENTREGA
-        self.direc_cliente_frame = ttk.LabelFrame(self.check_frame, text="Costo total del pedido ", padding=(20, 10))
-        self.direc_cliente_entry = ttk.Entry(self.direc_cliente_frame)
-        self.direc_cliente_entry.insert(0, "Ej. 141")
-        self.direc_cliente_entry.bind("<Button-1>", lambda event: self.borrar_texto(self.direc_cliente_entry))# Asociar la función borrar_texto al evento clic
-        ## NOMBRE DEL CLIENTE
-        self.nombre_cliente_frame = ttk.LabelFrame(self.check_frame, text="$ para pedido", padding=(20, 10))
-        self.nombre_cliente_entry = ttk.Entry(self.nombre_cliente_frame)
-        self.nombre_cliente_entry.insert(0, "Ej.200")
-        self.nombre_cliente_entry.bind("<Button-1>", lambda event: self.borrar_texto(nombre_cliente_entry))# Asociar la función borrar_texto al evento clic
-        ## NUMERO DEL CLIENTE
-        self.num_cliente_frame = ttk.LabelFrame(self.check_frame, text="$ regresado repartidor", padding=(20, 10))
-        self.num_cliente_entry = ttk.Entry(self.num_cliente_frame)
-        self.num_cliente_entry.insert(0, "Ej. 210")
-        self.num_cliente_entry.bind("<Button-1>", lambda event: self.borrar_texto(num_cliente_entry))# Asociar la función borrar_texto al evento clic
-        ## TARIFA
-        self.tarifa_frame = ttk.LabelFrame(self.check_frame, text="Tarifa $MXN", padding=(20, 10))
-        self.tarifa_entry = ttk.Entry(self.tarifa_frame)
-        self.tarifa_entry.insert(0, "Ej. 10")
-        self.tarifa_entry.bind("<Button-1>", lambda event: self.borrar_texto(tarifa_entry))# Asociar la función borrar_texto al evento clic
-
-        # Create a Frame for the Radiobuttons
-        self.radio_frame = ttk.LabelFrame(self.check_frame, text="Metodo de Pago", padding=(20, 10))
-        # Radiobuttons
-        self.metodos_de_pago = ["Efectivo","Transferencia"]
-        self.var_metodos_de_pago = tk.StringVar(value='') 
-        self.radio_metodos_de_pago = [tk.Radiobutton(self.radio_frame, text=metodo, variable=self.var_metodos_de_pago, value=metodo) for i,metodo in enumerate(self.metodos_de_pago)]
-        # BOTONES
-        self.widgets_frame = ttk.Frame(self.check_frame)
-        self.botones = [("Guardar",self.guardar_f),("Cancelar",self.cancelar_f)]
-        self.botones_button = [ttk.Button(self.widgets_frame, text=i[0],command=i[1] ) for i in self.botones]
-##        for i,btn in enumerate(self.botones_button):
-##            
-    def guardar_f(self):
-        
-        self.root.destroy()
-    def cancelar_f(self):
-        self.root.destroy()        
-    def draw(self):
-        ## TODO LO QUE DIBUJA A LOS WIDGETS -------------------------------------------------------------------------------------------------------------------------------
-
-        ## MAPA JERARQUICO DE WIDGETS
-        ## root
-        ##     fecha_y_hora
-        ##     productos
-        ##         orden: text
-        ##     detalles del pedido/checkframe
-        ##         direccion_de_entrega:entry
-        ##         nombre:entry
-        ##         numero:entry
-        ##         metodo de pago: Radio_buttons
-        self.check_frame.grid(row=2, column=0, padx=(3), pady=(3), sticky="nsew")
-        self.hora_label.grid(row=0, column=0, padx=(3), pady=(3), sticky="nsew")
-
-        self.direc_cliente_frame.grid(row=0, column=0, sticky="nsew")
-        self.direc_cliente_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.nombre_cliente_frame.grid(row=1, column=0, sticky="nsew")
-        self.nombre_cliente_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.num_cliente_frame.grid(row=1, column=1, sticky="nsew")
-        self.num_cliente_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.tarifa_frame.grid(row=0, column=1, sticky="nsew")
-        self.tarifa_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
-
-        self.radio_frame.grid(row=2, column=0, padx=(20, 10), pady=10, sticky="nsew")
-
-        for i,radio in enumerate(self.radio_metodos_de_pago):
-##            radio.state(["alternate"])
-            
-            radio.grid(row=i, column=0, sticky="nsew")
-
-        for i,btn in enumerate(self.botones_button):
-            btn.grid(row=0, column=i, sticky="nsew")
-        self.widgets_frame.grid(row=3, column=0, sticky="nsew")
-
-    def get_data(self,func):
-        direccion = self.direc_cliente_entry.get()
-        nombre = self.nombre_cliente_entry.get()
-        numero = self.num_cliente_entry.get()
-        orden = self.orden_text.get()
-        data = [self.fecha_y_hora,direccion, nombre, numero, orden]
-        func(data)
-    def borrar_texto(self,entry):
-        # Borra el texto dentro del Entry al recibir un clic
-        entry.delete(0, tk.END)
-
-
 ## BUTTON FUNC; ACTIVATED WHEN PRESSED
 def agregar():
     iniciar_cronometro(pizarra[6][0], main_cronometro_cli)
     agregar_ventana = Agregar_pedido(root,treeview,agregar_rtrn,pedidos_totales)
     agregar_ventana.draw()
+    # DIBUJATIVA
 ## RETURN FUNC; THIUS IS THE GRIDGE BETWEEN THAT WINDOW AN THIS WINDOW
 def agregar_rtrn(tree,lista):
     lista_de_tiendas = {
-                    "1":"Hamburguesas al carbon",
+                    "1":"Reyes",
                     "2":"Tacos Beto",
                     "3":"Hamburguesas al carbon 2",
                     "4":"Postres la jaula",
@@ -357,37 +117,50 @@ def agregar_rtrn(tree,lista):
                     "62":"Aquacliva",
                     "63":"Pan chino",# Rancho la esmeralda
                     "64":"Quesadillas la curva",
-                    "65":"Reyes",
+                    "65":"Hamburguesas al carbon",
                     "66":"Antojitos Mario"
                     }
+    productos_main = ''
+    costos_unitarios = []
+    cantidades = []
     tiendas = list(lista_de_tiendas.values())
     print(f"tienda es: {tiendas}")
     ultimo_indice = tree.get_children()[-1]
     mostrar_dicc(tree,lista,"btn-add")
     orden_sin_terminar.append(lista)
     print(f"orden a añadir : {orden_sin_terminar}")
-    main_name_cli.set(lista[2])
-    main_num_cli.set(lista[3])
-    main_direccion_cli.set(lista[5])
-    main_hora_cli.set(f"Hora del Pedido: {lista[1]}")
+    main_name_cli.set(lista[1])
+    main_num_cli.set(lista[2])
+    main_direccion_cli.set(lista[4])
+    fecha, hora = lista[0].split(' ')
+    print(fecha, hora)
+    main_hora_cli.set(f"Hora del Pedido: {hora}")
+    main_fecha_cli.set(fecha)
     main_costo_cli.set("")
     main_cambio_cli.set("")
-    main_tarifa_cli.set("")
+    main_tarifa_cli.set(lista[8])
     main_entrega_cli.set("")
-    productos = procesar_lista_compras(lista[6])
+    main_metodo_pago.set(lista[11])
+    main_paga_con.set(lista[6])
+    productos = procesar_lista_compras(lista[5])
+    productos_main = lista[5]
+    main_orden_cli.set(lista[5])
     ## TITULOS 
     pizarra.append([tk.Label(pizarra[9][0],text="Productos",font=("Helvetica",15)),(0,0)])
     pizarra.append([tk.Label(pizarra[9][0],text="Cantidad",font=("Helvetica",15)),(0,1)])
     pizarra.append([tk.Label(pizarra[9][0],text="Costo unitario",font=("Helvetica",15)),(0,2)])
     pizarra.append([tk.Label(pizarra[9][0],text="Lo compraron de:",font=("Helvetica",15)),(0,3)])
-    opciones_var = []
-    for i,producto in enumerate(productos):
+    
+    for i,producto in enumerate(productos):# Aqui hacemos la suma
         # Variable para almacenar la opción seleccionada
+        costos_unitarios.append([tk.StringVar(),productos[producto]])
+        cantidades.append(productos[producto])
+##        print(costos_unitarios[len(costos_unitarios)])
         opciones_var.append(tk.StringVar(pizarra[9][0]))
         opciones_var[i].set(tiendas[0])
         pizarra.append([tk.Label(pizarra[9][0],text=producto,font=("Helvetica",15)),(i+1,0)])
         pizarra.append([tk.Label(pizarra[9][0],text=productos[producto],font=("Helvetica",15)),(i+1,1)])
-        pizarra.append([tk.Entry(pizarra[9][0]),(i+1,2)])
+        pizarra.append([tk.Entry(pizarra[9][0],textvariable=costos_unitarios[len(costos_unitarios)-1][0]),(i+1,2)])
         pizarra.append([tk.Entry(pizarra[9][0]),(i+1,2)])
         pizarra.append([tk.OptionMenu(pizarra[9][0], opciones_var[i], *tiendas),(i+1,3)])
     for i,widget in enumerate(pizarra):
@@ -396,7 +169,7 @@ def agregar_rtrn(tree,lista):
         else:
             widget[0].grid(row = widget[1][0],column = widget[1][1])
     
-def procesar_lista_compras(cadena_lista):
+def procesar_lista_compras(cadena_lista):# devuelve un diccionario
     if any(char.isdigit() for char in cadena_lista):
         # La cadena contiene al menos un número
         print("La cadena contiene números. Realizar alguna acción aquí.")
@@ -416,15 +189,14 @@ def procesar_lista_compras(cadena_lista):
         
         pass
     
-def btn_pendientes():
-    pendientes_win = Pendientes_class(root)
-    pendientes_win.draw()
+def analisis_ventana():
+    analisis_win = Analisis_class(root)
+    analisis_win.draw()
     
 def devolver(data):
     return data
 
 def mostrar_dicc(tree, diccionario, parent=""):
-    print(diccionario)
     
     if parent == "btn-add":# 
         tree.insert("", '0',text=diccionario[0], values=diccionario[1:])
@@ -458,8 +230,8 @@ def extraer_informacion_desde_rango(hoja, rango):
 
 def actualizar_fecha(etiqueta):
     fecha_hora_actual = datetime.now()
-    fecha_hora_str = fecha_hora_actual.strftime("%A %d de %B %Y, hora %H:%M:%S")
-    etiqueta.config(text=f"Bienvenido, la fecha del día de hoy es {fecha_hora_str}")
+    fecha_hora_str = fecha_hora_actual.strftime("%A %d de %B %Y\n %H:%M:%S")
+    etiqueta.config(text=f"Bienvenido\nhoy es {fecha_hora_str}")
     root.after(1000, lambda: actualizar_fecha(etiqueta))  # Actualizar cada 1000 milisegundos (1 segundo)
 
 def autocompletar(event):
@@ -482,13 +254,100 @@ def seleccionar_sugerencia(event):
     entry.insert(0, lista_sugerencias.get(tk.ACTIVE))
     lista_sugerencias.place_forget()
 
+## Funcion usada para el --boton:Terminar orden--
+def agregar_base_datos():
+    def filtrar_y_unir(lista_var):
+        tiendas = []
+        for i,tienda in enumerate(lista_var):
+            contenido = tienda.get()
+            tiendas.append(contenido)
+        lista_filtrada = list(set(tiendas))  # Convertir a conjunto para eliminar duplicados y luego volver a convertir a lista
+        resultado = ', '.join(map(str, lista_filtrada))  # Convertir la lista a cadena separada por coma
+        return resultado
+    
+    
+    fecha = main_fecha_cli.get() # Var guarda la fecha
+    hora = main_hora_cli.get() # var guarda la hora en que se tomo orden
+    nombre = main_name_cli.get() # nombre del cliente
+    numero = main_num_cli.get()
+    recoleccion = filtrar_y_unir(opciones_var)
+    print(recoleccion)
+    direccion = main_direccion_cli.get()
+    orden = main_orden_cli.get()
+    tarifa = main_tarifa_cli.get()
+    paga_con = main_paga_con.get()
+    costo = main_costo_cli.get()
+    cambio = main_cambio_cli.get()
+    d_entregado = main_entrega_cli.get()
+    metodo_pago = main_metodo_pago.get()
+    main_cronometro_cli = []
+    pedido = [fecha, hora, nombre, numero, recoleccion, direccion, orden,  paga_con, costo, tarifa,  d_entregado,  metodo_pago, cambio]
+    print(f"Este es el pedido {pedido}")
+    # Cargar el archivo Excel
+    archivo_excel = 'PEDIDITO_DB.xlsx'
+    hoja_nombre = 'BASE_PEDIDITO'
+
+    wb = load_workbook(archivo_excel)
+    hoja = wb[hoja_nombre]
+
+    # Insertar la nueva fila al principio de la tabla
+    hoja.insert_rows(2, amount=1)
+    for col_num, value in enumerate(pedido, start=1):
+        hoja.cell(row=2, column=col_num, value=value)
+    # Guardar el archivo Excel actualizado
+    wb.save(archivo_excel)
+    for i,widget in enumerate(pizarra):
+        
+        widget[0].grid_forget()
+####    productos = ""
+##    for i,producto in enumerate(productos_main):
+##        if i == len(productos_main)-1:
+##            productos += producto.get()
+##        else:
+##            productos += producto.get()+","
+
+# Funcion para sumar los numeros y mostrar los resultdos
+def sumar_conceptos(event):
+    pass
+
+# Función para restar los números y mostrar el resultado
+def restar_numeros(event):
+    try:
+        costo = float(main_costo_cli.get())
+        paga_con = float(main_paga_con.get())
+        tarifa = float(main_tarifa_cli.get())
+        costo_total = costo + tarifa
+        main_total_cli.set(costo_total)
+        resultado = paga_con - costo_total
+        main_cambio_cli.set(resultado)
+        suma = 0
+        for i,j in enumerate(costos_unitarios):
+            costo = j.get()
+            suma += costo*cantidades[i]
+    except ValueError:
+        # Manejar la excepción si los valores ingresados no son números
+        pass
+
+
+##### AQUI EMPIEZA LA APP DE PEDIDITO VENTANA PRINCIPAL #####
+    
+###       ##
+         # #
+           #
+           #
+           #
+           #
+        #######
+
+    
 ##### MAPA JERARQUICO
 ## root
-##    hojas
-##       paginas
-##          opciones_labelframes
-##             opciones_widgets_1
-
+##    cuaderno
+##       hojas: encabezados = ['Principal','Buscar','Mapa']
+##          paginas
+##             opciones_labelframes
+##                opciones_widgets_1
+##             pizarra
 
 
 # VENTANA PRINCIPAL
@@ -499,12 +358,12 @@ root.option_add("*tearOff", False) # This is always a good idea
 # Notebook
 cuaderno = ttk.Notebook(root)# jerarquia: 0
 encabezados = ['Principal','Buscar','Mapa']
-# hojas
+# hojas - Frames de "cuaderno"
 hojas = []# jerarquia: 1
-# paginas
+# paginas - Frames de "hojas"
 paginas = []# jerarquia: 2
 # labelframe
-opciones_principal = [["Nueva Orden",(0,0)],["Ordenes Pendientes",(0,1)],["Orden Actual",(1,0)]]
+opciones_principal = [["Acciones pendientes",(0,0)],["Ordenes Pendientes",(0,1)],["Orden Actual",(1,0)]]
 opciones_labelframes = []# jerarquia: 3
 # widgets
 opciones_widgets_1 = []# jerarquia: 4
@@ -512,17 +371,22 @@ opciones_widgets_2 = []# jerarquia: 4
 # pizarra
 pizarra = []# jerarquia: 2
 productos_strvar = []
+# opciones_ var
+opciones_var = []
+
+# Labelframe 2
+opciones_buscar = [["",(0,0)],["Ordenes Pendientes",(0,1)],["Orden Actual",(1,0)]]
+opciones_labelframes = []# jerarquia: 3
 
 treeview_data = {}
 orden_sin_terminar = []
-
+productos = []
+costos_unitarios = []
 for i,encabezado in enumerate(encabezados):
     hojas.append(ttk.Frame(cuaderno))
     cuaderno.add(hojas[i], text=encabezado)
     paginas.append(ttk.Frame(hojas[i]))
-    
-for i,frame in enumerate(paginas):
-    frame.grid(row=0,column=0,padx=0,pady=0)
+    paginas[i].grid(row=0,column=0,padx=20,pady=20)
 
 
 # -------------------------------------------------------------------------- FRAMES----------------------------------------------------
@@ -530,31 +394,43 @@ for i,opcion in enumerate(opciones_principal):
     opciones_labelframes.append(tk.LabelFrame(paginas[0], text=opcion[0]))
     opciones_labelframes[i].grid(row = opcion[1][0], column = opcion[1][1])
 
-opciones_widgets_1.append([tk.Button(opciones_labelframes[0],text="(   +   )",command=agregar),(0,0)])
+opciones_widgets_1.append([tk.Button(opciones_labelframes[0],text="(   +   )",command=agregar,font=("Helvetica",25)),(0,0)])
 opciones_widgets_1[len(opciones_widgets_1)-1][0].grid(row=opciones_widgets_1[len(opciones_widgets_1)-1][1][0],column=opciones_widgets_1[len(opciones_widgets_1)-1][1][1], sticky = "we")
-pendientes = 0
-opciones_widgets_1.append([tk.Button(opciones_labelframes[0],text=f"Ordenes Pendientes : {pendientes}",command=btn_pendientes),(0,1)])
-opciones_widgets_1[len(opciones_widgets_1)-1][0].grid(row=opciones_widgets_1[len(opciones_widgets_1)-1][1][0],column=opciones_widgets_1[len(opciones_widgets_1)-1][1][1])
-
-cuaderno.grid(row=0,column=0,padx=0,pady=0,sticky="nswe")
 fecha_actual = datetime.now()
+opciones_widgets_1.append([tk.Button(opciones_labelframes[0],text=f"Analisis",command=analisis_ventana,font=("Helvetica",25)),(0,2)])
+opciones_widgets_1[len(opciones_widgets_1)-1][0].grid(row=opciones_widgets_1[len(opciones_widgets_1)-1][1][0],column=opciones_widgets_1[len(opciones_widgets_1)-1][1][1])
+cuaderno.grid(row=0,column=0,padx=0,pady=0,sticky="EW",columnspan=2)
+
 
 ## PIZARRA WIDGETS
 ## Label-Fecha
 ## FECHA Y HORA
-pizarra.append([tk.Label(opciones_labelframes[0],text=fecha_actual,font=("Helvetica",25)),(1,0),(1,3)])# 0
-actualizar_fecha(pizarra[len(pizarra)-1][0])
+##pizarra.append([tk.Label(paginas[0],text=fecha_actual,font=("Helvetica",25)),(1,0),(1,3)])# 0
+
+## Strings del dia
+main_ordenes_del_dia = tk.IntVar()
+
 ## StringVar's
+main_fecha_cli = tk.StringVar()
+main_hora_cli = tk.StringVar()
 main_name_cli = tk.StringVar()
 main_num_cli = tk.StringVar()
+main_recoleccion = tk.StringVar()
 main_direccion_cli = tk.StringVar()
+main_orden_cli = tk.StringVar()
+main_paga_con = tk.IntVar()
 main_costo_cli = tk.StringVar()
-main_cambio_cli = tk.StringVar()
 main_tarifa_cli = tk.StringVar()
+main_total_cli = tk.StringVar()
+main_cambio_cli = tk.StringVar()
 main_entrega_cli = tk.StringVar()
-main_hora_cli = tk.StringVar()
+main_metodo_pago = tk.StringVar()
 main_cronometro_cli = []
+
+
+
 ##main_cronometro_cli.append(tk.StringVar())
+main_ordenes_del_dia.set(0)
 main_name_cli.set("El. Eliseo")
 main_num_cli.set("Ej. 5530181574")
 main_costo_cli.set("Ej. 170")
@@ -563,30 +439,44 @@ main_tarifa_cli.set("Ej. 10")
 main_entrega_cli.set("Ej. 210")
 main_direccion_cli.set("Ej. Edif 14B 303")
 main_hora_cli.set("--:--")
-##main_cronometro_cli[0].set("Sin Pedido")
-## WIDGETS
-pizarra.append([tk.Label(opciones_labelframes[0],text= "Nombre del cliente"),(2,0)])# 1
-pizarra.append([tk.Entry(opciones_labelframes[0],textvariable=main_name_cli,font=("Helvetica",15)),(2,1)])# 2
-pizarra.append([tk.Label(opciones_labelframes[0],textvariable=main_hora_cli),(2,2)])# 3
-pizarra.append([tk.Label(opciones_labelframes[0],text= "Numero del cliente"),(3,0)])# 4
-pizarra.append([tk.Entry(opciones_labelframes[0],textvariable=main_num_cli,font=("Helvetica",15)),(3,1)])# 5
-pizarra.append([tk.Label(opciones_labelframes[0],text="--:--"),(3,2)])# 6
-pizarra.append([tk.Label(opciones_labelframes[0],text= "Dirección del cliente"),(4,0)])# 7
-pizarra.append([tk.Entry(opciones_labelframes[0],textvariable=main_direccion_cli,font=("Helvetica",15)),(4,1)])# 8
-pizarra.append([tk.LabelFrame(opciones_labelframes[0],text= "Productos"),(5,0),(1,2)])# 9 Recuerda Cambiar
-pizarra.append([tk.LabelFrame(opciones_labelframes[0],text= "Costo"),(6,0)])
-pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_costo_cli,font=("Helvetica",15)),(0,0)])
-pizarra.append([tk.LabelFrame(opciones_labelframes[0],text= "Cambio"),(6,1)])
-pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_cambio_cli,font=("Helvetica",15)),(0,0)])
-pizarra.append([tk.LabelFrame(opciones_labelframes[0],text= "Tarifa"),(7,0)])
-pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_tarifa_cli,font=("Helvetica",15)),(0,0)])
-pizarra.append([tk.LabelFrame(opciones_labelframes[0],text= "Dinero entregado"),(7,1)])
-pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_entrega_cli,font=("Helvetica",15)),(0,0)])
-for i,widget in enumerate(pizarra):
-    if len(widget) > 2:
-        widget[0].grid(row = widget[1][0],column = widget[1][1],rowspan= widget[2][0],columnspan=widget[2][1])
-    else:
-        widget[0].grid(row = widget[1][0],column = widget[1][1])
+
+# DECLARATIVA 
+fechas = tk.Label(hojas[0],text=fecha_actual,font=("Helvetica",25))
+fechas.grid(row=1,column=0)
+actualizar_fecha(fechas)
+pizarra.append([tk.LabelFrame(hojas[0],text= "Pedido Actual"),(2,0)])# 0
+pizarra.append([tk.Label(pizarra[0][0],text= "Nombre del cliente"),(0,0)])# 1
+pizarra.append([tk.Entry(pizarra[0][0],textvariable=main_name_cli,font=("Helvetica",15)),(0,1)])# 2
+pizarra.append([tk.Label(pizarra[0][0],textvariable=main_hora_cli),(0,2)])# 3
+pizarra.append([tk.Label(pizarra[0][0],text= "Numero del cliente"),(1,0)])# 4
+pizarra.append([tk.Entry(pizarra[0][0],textvariable=main_num_cli,font=("Helvetica",15)),(1,1)])# 5
+pizarra.append([tk.Label(pizarra[0][0],text="--:--"),(1,2)])# 6
+pizarra.append([tk.Label(pizarra[0][0],text= "Dirección del cliente"),(2,0)])# 7
+pizarra.append([tk.Entry(pizarra[0][0],textvariable=main_direccion_cli,font=("Helvetica",15)),(2,1)])# 8
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Productos"),(3,0),(1,2)])# 9 Recuerda Cambiar
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Costo"),(4,0)])# 10
+pizarra[len(pizarra)-1][0].bind('<FocusOut>', restar_numeros) 
+pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_costo_cli,font=("Helvetica",13)),(0,0)])## 11
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Cambio"),(4,1)])# 12
+pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_cambio_cli,font=("Helvetica",15)),(0,0)])# 13
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Tarifa"),(5,0)])# 14
+pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_tarifa_cli,font=("Helvetica",15)),(0,0)])# 15
+pizarra[len(pizarra)-1][0].bind('<FocusOut>', restar_numeros) 
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Dinero para comprar"),(5,1)])# 16
+pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_entrega_cli,font=("Helvetica",15)),(0,0)])# 17
+pizarra[len(pizarra)-1][0].bind('<FocusOut>', restar_numeros) 
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Metodo de Pago"),(6,0)])#18
+pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_metodo_pago,font=("Helvetica",15)),(0,0)])# 19
+pizarra.append([tk.LabelFrame(pizarra[0][0],text= "Paga con..."),(6,1)])# 20
+pizarra.append([tk.Entry(pizarra[len(pizarra)-1][0],textvariable=main_paga_con,font=("Helvetica",15)),(0,0)])# 21
+pizarra[len(pizarra)-1][0].bind('<FocusOut>', restar_numeros) 
+pizarra.append([tk.Button(pizarra[0][0],text="Terminar Orden",font=("Helvetica",15),command=agregar_base_datos),(7,0)])#22
+
+##for i,widget in enumerate(pizarra):
+##        if len(widget) > 2:
+##            widget[0].grid(row = widget[1][0],column = widget[1][1],rowspan= widget[2][0],columnspan=widget[2][1])
+##        else:
+##            widget[0].grid(row = widget[1][0],column = widget[1][1])
 
 # -------------------------------------------------------------------------- TREEVIEW -------------------------------------------------
 # Create a Frame for the Treeview
@@ -598,7 +488,7 @@ treeScroll = ttk.Scrollbar(treeFrame)
 treeScroll.pack(side="right", fill="y")
 treeScrollx = ttk.Scrollbar(treeFrame,orient="horizontal")
 treeScrollx.pack(side="bottom", fill="x")
-encabezados = ["N° de Pedido","Fecha","Nombre del cliente","N° de Contacto","Recoleccion","Entrega","Producto","Paga con…","Costo del pedido","Tarifa","Cobro total","Dinero entregado a repartidor para compra","$ entregado al repartidor para cambio","$ total dado al repartidor","$ total recibido por el repartidor"]  
+encabezados = ["N° de Pedido","Fecha","Hora del pedido","Nombre del cliente","N° de Contacto","Recoleccion","Entrega","Producto","Paga con…","Costo del pedido","Tarifa","Cobro total","Dinero entregado a repartidor para compra","$ entregado al repartidor para cambio","$ total dado al repartidor","$ total recibido por el repartidor"]  
 
 # Treeview
 columnas = [i for i in range(1,len(encabezados))]
@@ -617,13 +507,10 @@ for i, j in enumerate(encabezados):
         treeview.heading(i, text=j, anchor="center")
         treeview.column(i, anchor="w", width=100)
 
-
-##cronometro = CronometroApp(opciones_widgets_1,paginas)
-
 # Ejemplo de uso
 ruta_archivo_excel = 'PEDIDITO_DB.xlsx'
-nombre_hoja_excel = 'Semana 1 del 21 al 27 de agost'
-rango_a_extraer = 'A1:L72'  # Por ejemplo, desde A1 hasta C10
+nombre_hoja_excel = 'BASE_PEDIDITO'
+rango_a_extraer = 'A2:K1500'  # Por ejemplo, desde A1 hasta C10
 
 # Cargar el libro de trabajo (workbook)
 libro = openpyxl.load_workbook(ruta_archivo_excel)
